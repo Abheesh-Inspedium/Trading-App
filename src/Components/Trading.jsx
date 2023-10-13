@@ -14,6 +14,46 @@ import {
     ComposedChart,
 } from 'recharts';
 
+function CountdownTimer() {
+    const [countdown, setCountdown] = useState(10);
+
+    useEffect(() => {
+        const updateCountdown = () => {
+            const storedStartTime = localStorage.getItem('timerStartTime');
+            if (storedStartTime) {
+                const startTime = parseInt(storedStartTime, 10);
+                const currentTime = Math.floor(Date.now() / 1000);
+                const elapsed = currentTime - startTime;
+                const remaining = 10 - elapsed;
+
+                if (remaining > 0) {
+                    setCountdown(remaining);
+                    localStorage.setItem('timerStartTime', startTime);
+                } else {
+
+                    setCountdown(0);
+                    localStorage.removeItem('timerStartTime');
+                }
+            }
+        };
+
+        // Start or resume the timer
+        updateCountdown();
+
+        // Set up an interval to update the countdown every second
+        const interval = setInterval(updateCountdown, 1000);
+
+        return () => clearInterval(interval); // Clear the interval on unmount
+    }, []);
+
+    return (
+        <div>
+            <p>Remaining Time: {countdown} seconds</p>
+        </div>
+    );
+}
+
+
 const ChartComponent = ({ data }) => {
     const maxC = Math.max(...data.map(item => item.close));
     const maxH = Math.max(...data.map(item => item.high));
@@ -65,7 +105,7 @@ const ChartComponent = ({ data }) => {
 };
 
 const Trading = () => {
-    const stocks = ['TSM', 'AAPL', 'MSFT']
+    const stocks = ['TSM', 'AAPL']
     const [stocksData, setStocksData] = useState([]);
     const startDate = '2022-01-01';
     const endDate = '2023-01-01';
@@ -82,11 +122,11 @@ const Trading = () => {
 
     const updateData = () => {
         console.log('Fetching');
+        setStocksData([]);
         stocks.map((stock) => {
             fetchData(stock)
                 .then((response) => {
                     const data = response?.data;
-                    console.log(data);
                     if (data && data.results) {
                         data.results.sort((a, b) => b.t - a.t);
                         const limitedData = data.results.slice(0, 10);
@@ -96,8 +136,10 @@ const Trading = () => {
                             low: item.l,
                             high: item.h,
                         }))
-                        console.log(customData);
-                        setStocksData([...stocksData, customData]);
+                        setStocksData((prevStocksData) => [
+                            ...prevStocksData,
+                            { name: data.ticker, results: customData },
+                        ]);
                     }
                 })
                 .catch((error) => {
@@ -106,35 +148,55 @@ const Trading = () => {
         })
     };
 
-    useEffect(() => {
-        const data = localStorage.getItem('stockData');
 
-        if (data && data.length > 2) {
+    useEffect(() => {
+        localStorage.setItem('stockData', JSON.stringify(stocksData));
+        localStorage.setItem('countdown', '50');
+    }, [stocksData]);
+
+    useEffect(() => {
+        let countdown = parseInt(localStorage.getItem('countdown'), 10);
+        const localData = localStorage.getItem('stockData');
+        if (localData !== '[]') {
             console.log('localStorage');
-            const parsedData = JSON.parse(data);
-            console.log(parsedData);
+            const parsedData = JSON.parse(localData);
             setStocksData(parsedData);
         }
         else {
             updateData();
-            console.log('Stocks: ', stocksData);
-            localStorage.setItem('stockData', JSON.stringify(stocksData));
         }
-        setTimeout(updateData, 60000);
+        const countdownUpdate = () => {
+            if (countdown <= 0) {
+                updateData();
+                countdown = 50;
+            } else {
+                countdown -= 1;
+                localStorage.setItem('countdown', countdown.toString());
+            }
+        };
+        console.log(countdown);
+
+        const dataInterval = setInterval(() => {
+            updateData();
+        }, 50000);
+
+        return () => {
+            clearInterval(dataInterval);
+        };
     }, []);
-    let count = 0;
-    console.log(count.current);
+
+
     return (
         <Box padding={'3rem'}>
             {stocksData.map((stockData) => {
-                count++
                 return (
                     <>
-                        <Heading>{stocks[count]}'s Stock Value for the last week of 2022</Heading>
-                        <ChartComponent data={stockData} />
+                        <Heading>{stockData.name}'s Stock Value for the last week of 2022</Heading>
+                        <ChartComponent data={stockData.results} />
                     </>
                 );
             })}
+
         </Box>
     );
 };
