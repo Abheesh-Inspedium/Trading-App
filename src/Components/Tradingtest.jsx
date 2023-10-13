@@ -1,6 +1,6 @@
 import { Box, Heading } from '@chakra-ui/react';
 import axios from 'axios';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     LineChart,
     XAxis,
@@ -64,79 +64,82 @@ const ChartComponent = ({ data }) => {
     );
 };
 
-const Trading = () => {
-    const stocks = ['TSM', 'AAPL', 'MSFT']
-    const [stocksData, setStocksData] = useState([]);
+const TradingTest = () => {
+    const [stockData, setStockData] = useState([]);
+    const [stockDataWithDates, setStockDataWithDates] = useState([]);
     const startDate = '2022-01-01';
     const endDate = '2023-01-01';
     const apiKey = 'be1hPzvVwCupKwp5OVOASeQ_TBaOMayu';
+    const symbol = 'AAPL';
+    const apiUrl = `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/2022-01-01/2023-01-01?unadjusted=false&apiKey=${apiKey}`;
 
     function formatDate(date) {
         const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
         return date.toLocaleDateString('en-US', options);
     }
 
-    const fetchData = async (stock) => {
-        return await axios.get(`https://api.polygon.io/v2/aggs/ticker/${stock}/range/1/day/2022-01-01/2023-01-01?unadjusted=false&apiKey=${apiKey}`);
+    const fetchData = () => {
+        return axios.get(apiUrl);
     };
 
     const updateData = () => {
-        console.log('Fetching');
-        stocks.map((stock) => {
-            fetchData(stock)
-                .then((response) => {
-                    const data = response?.data;
-                    console.log(data);
-                    if (data && data.results) {
-                        data.results.sort((a, b) => b.t - a.t);
-                        const limitedData = data.results.slice(0, 10);
-                        const customData = limitedData.map((item) => ({
+        fetchData()
+            .then((response) => {
+                const data = response?.data;
+                console.log('data:', data);
+                if (data && data.results) {
+                    data.results.sort((a, b) => b.t - a.t);
+                    const limitedData = data.results.slice(0, 10);
+                    setStockDataWithDates(
+                        limitedData.map(item => ({
                             date: formatDate(new Date(item.t)),
                             close: item.c,
                             low: item.l,
                             high: item.h,
                         }))
-                        console.log(customData);
-                        setStocksData([...stocksData, customData]);
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                })
-        })
+                    );
+                    console.log(stockDataWithDates);
+                    localStorage.setItem('stockData', JSON.stringify(data));
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                setTimeout(updateData, 60000);
+            });
     };
+
 
     useEffect(() => {
         const data = localStorage.getItem('stockData');
-
         if (data && data.length > 2) {
-            console.log('localStorage');
             const parsedData = JSON.parse(data);
-            console.log(parsedData);
-            setStocksData(parsedData);
+            parsedData.results.sort((a, b) => b.t - a.t);
+            const limitedData = parsedData.results.slice(0, 10);
+            setStockDataWithDates(
+                limitedData.map(item => ({
+                    date: formatDate(new Date(item.t)),
+                    close: item.c,
+                    low: item.l,
+                    high: item.h,
+                }))
+            );
         }
         else {
             updateData();
-            console.log('Stocks: ', stocksData);
-            localStorage.setItem('stockData', JSON.stringify(stocksData));
         }
-        setTimeout(updateData, 60000);
     }, []);
-    let count = 0;
-    console.log(count.current);
+
     return (
         <Box padding={'3rem'}>
-            {stocksData.map((stockData) => {
-                count++
-                return (
-                    <>
-                        <Heading>{stocks[count]}'s Stock Value for the last week of 2022</Heading>
-                        <ChartComponent data={stockData} />
-                    </>
-                );
-            })}
+            <Heading>Apple's Stock Value for the last week of 2022</Heading>
+            <ChartComponent data={stockDataWithDates} />
+            <Heading>Apple's Stock Value for the last week of 2022</Heading>
+            <ChartComponent data={stockDataWithDates} />
+
         </Box>
     );
 };
 
-export default Trading;
+export default TradingTest;

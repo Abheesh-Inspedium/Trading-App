@@ -6,6 +6,7 @@ import {
 } from '@chakra-ui/react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Trading from './Components/Trading';
+import TradingTest from './Components/Tradingtest';
 
 function App() {
   return (
