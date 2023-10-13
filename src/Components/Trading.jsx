@@ -105,7 +105,7 @@ const ChartComponent = ({ data }) => {
 };
 
 const Trading = () => {
-    const stocks = ['TSM', 'AAPL']
+    const stocks = ['TSM', 'AAPL', 'MSFT', 'XOM']
     const [stocksData, setStocksData] = useState([]);
     const startDate = '2022-01-01';
     const endDate = '2023-01-01';
